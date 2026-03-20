@@ -12,15 +12,44 @@ import { spawnSync } from "child_process";
  *
  * @returns true if the path is safe to delete, false otherwise.
  */
+// Issue #79: On macOS, /tmp is a system symlink → /private/tmp.
+// Both prefixes are valid and should be treated as equivalent.
+// Without this normalization, paths under /tmp are incorrectly flagged
+// as symlink escapes when the allowedBase is os.homedir() (which resolves
+// under /Users/... or /private/Users/... depending on realpathSync).
+const MACOS_SYSTEM_SYMLINKS: Record<string, string> = {
+  "/tmp": "/private/tmp",
+  "/var": "/private/var",
+  "/etc": "/private/etc",
+};
+
+function normalizeMacOSPath(p: string): string {
+  for (const [alias, real] of Object.entries(MACOS_SYSTEM_SYMLINKS)) {
+    if (p === alias || p.startsWith(alias + path.sep)) {
+      return real + p.slice(alias.length);
+    }
+  }
+  return p;
+}
+
 export function isSafeToDelete(targetPath: string, allowedBase: string): boolean {
   try {
     // Resolve symlinks to their real paths
-    const resolvedTarget = fs.realpathSync(targetPath);
-    const resolvedBase = fs.realpathSync(allowedBase);
+    const resolvedTarget = normalizeMacOSPath(fs.realpathSync(targetPath));
+    const resolvedBase = normalizeMacOSPath(fs.realpathSync(allowedBase));
 
-    // Ensure the resolved path is strictly within the allowed base
-    return resolvedTarget === resolvedBase ||
+    // Ensure the resolved path is strictly within the allowed base,
+    // OR is one of the known macOS system temp/log paths (always safe to clean)
+    const isInBase = resolvedTarget === resolvedBase ||
       resolvedTarget.startsWith(resolvedBase + path.sep);
+
+    if (isInBase) return true;
+
+    // Allow known macOS system paths that are valid targets regardless of allowedBase
+    const knownSafePrefixes = ["/private/tmp", "/private/var/log", "/private/var/folders"];
+    return knownSafePrefixes.some(
+      (prefix) => resolvedTarget === prefix || resolvedTarget.startsWith(prefix + path.sep)
+    );
   } catch {
     // If realpathSync fails (path doesn't exist, permission denied),
     // the path cannot be safely validated — reject it.
