@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { spawnSync } from "child_process";
 
 /**
  * Resolves symlinks and validates that `targetPath` is contained within
@@ -43,7 +44,6 @@ export function safeRmSync(
 
   try {
     // Measure size before deletion
-    const { spawnSync } = require("child_process") as typeof import("child_process");
     const du = spawnSync("du", ["-sk", targetPath], { encoding: "utf8" });
     let size = 0;
     if (du.stdout) {
