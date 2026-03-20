@@ -76,7 +76,7 @@ export async function clean(options: CleanOptions): Promise<CleanResult> {
   }
 
   if (options.dryRun) {
-    if (spinner) spinner.succeed(chalk.yellow("✔ Dry run — nothing deleted"));
+    if (spinner) spinner.succeed(chalk.yellow("Dry run — nothing deleted"));
     for (const p of targetPaths) {
       if (fs.existsSync(p)) {
         const size = duBytes(p);
@@ -123,7 +123,7 @@ export async function clean(options: CleanOptions): Promise<CleanResult> {
     cleanedPaths.push("xcode://simulators/unavailable");
   }
 
-  if (spinner) spinner.succeed(chalk.green("✔ Xcode cleaned"));
+  if (spinner) spinner.succeed(chalk.green("Xcode cleaned"));
 
   if (!options.json && !(options as any)._suppressTable) {
     renderSummaryTable([{ module: "Xcode", paths: cleanedPaths.length, freed, status: "freed", warnings: errors.length }]);

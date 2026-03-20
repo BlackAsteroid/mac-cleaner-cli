@@ -1,5 +1,6 @@
 import { spawnSync } from "child_process";
 import * as readline from "readline";
+import { isPrivilegedPath } from "./privilegedPaths.js";
 
 /**
  * Prompt the user for a sudo password using masked input.
@@ -83,9 +84,10 @@ export async function promptSudoPassword(paths: string[]): Promise<string> {
  * Security: password is passed via stdin to `sudo -S`, never as argument.
  */
 export function sudoRmRf(targetPath: string, password: string): { freed: number; error?: string } {
-  // Validate the path is absolute to prevent any traversal shenanigans
-  if (!targetPath.startsWith("/") && !targetPath.startsWith(process.env.HOME ?? "/Users/")) {
-    return { freed: 0, error: `Refusing to sudo-remove relative path: ${targetPath}` };
+  // Security fix (Gerard HIGH): only allow paths in the predefined privileged allowlist.
+  // Prevents sudo rm -rf from being called on arbitrary absolute paths like /etc or /.
+  if (!isPrivilegedPath(targetPath)) {
+    return { freed: 0, error: `Refusing to sudo-remove non-privileged path: ${targetPath}` };
   }
 
   // Get size before removal
@@ -108,7 +110,10 @@ export function sudoRmRf(targetPath: string, password: string): { freed: number;
     if (stderr.includes("incorrect password") || stderr.includes("Sorry")) {
       return { freed: 0, error: "Incorrect sudo password" };
     }
-    return { freed: 0, error: `sudo rm failed: ${stderr.trim()}` };
+    // Security fix (Gerard MEDIUM): strip any password prompt echo from stderr
+    // before exposing it in the error string.
+    const safeStderr = stderr.replace(/password[:\s]*/gi, "[password prompt]").trim();
+    return { freed: 0, error: `sudo rm failed: ${safeStderr}` };
   }
 
   return { freed: sizeBefore };

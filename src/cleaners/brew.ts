@@ -47,7 +47,7 @@ export async function clean(options: CleanOptions): Promise<CleanResult> {
   }
 
   if (options.dryRun) {
-    if (spinner) spinner.succeed(chalk.yellow("✔ Dry run — nothing deleted"));
+    if (spinner) spinner.succeed(chalk.yellow("Dry run — nothing deleted"));
     if (cachePath) {
       cleanedPaths.push(cachePath);
       freed = sizeBefore;
@@ -97,7 +97,7 @@ export async function clean(options: CleanOptions): Promise<CleanResult> {
 
   freed = Math.max(0, sizeBefore - sizeAfter);
 
-  if (spinner) spinner.succeed(chalk.green("✔ Brew cleaned"));
+  if (spinner) spinner.succeed(chalk.green("Brew cleaned"));
 
   if (!options.json && !(options as any)._suppressTable) {
     renderSummaryTable([{ module: "Brew", paths: cleanedPaths.length, freed, status: "freed", warnings: errors.length }]);

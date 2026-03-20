@@ -78,7 +78,7 @@ export async function clean(options: CleanOptions): Promise<CleanResult> {
 
   // ── Dry run ──────────────────────────────────────────────────────────────
   if (options.dryRun) {
-    if (spinner) spinner.succeed(chalk.yellow("✔ Dry run — nothing deleted"));
+    if (spinner) spinner.succeed(chalk.yellow("Dry run — nothing deleted"));
 
     for (const p of normalPaths) {
       const size = duBytes(p);
@@ -164,7 +164,7 @@ export async function clean(options: CleanOptions): Promise<CleanResult> {
 
   freed += privilegedFreed;
 
-  if (spinner) spinner.succeed(chalk.green("✔ System cleaned"));
+  if (spinner) spinner.succeed(chalk.green("System cleaned"));
 
   if (!options.json && !suppressTable) {
     const rows: SummaryRow[] = [

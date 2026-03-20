@@ -35,7 +35,7 @@ function addCleanOptions(cmd: Command): Command {
     .option("--dry-run", "Show what would be deleted without actually deleting", false)
     .option("--json", "Output results as JSON", false)
     .option("-v, --verbose", "Show each path as it is cleaned (default: summary table only)", false)
-    .option("--no-sudo", "Skip privileged paths without prompting for sudo", false)
+    .option("--no-sudo", "Skip privileged paths without prompting for sudo")
     .option("-y, --yes", "Non-interactive mode: skip sudo prompt (CI-safe)", false);
 }
 
@@ -50,7 +50,7 @@ addCleanOptions(
   cleanCmd
     .command("system")
     .description("Clean ~/Library/Caches, /tmp, and system logs")
-).action(async (opts: { dryRun: boolean; json: boolean }) => {
+).action(async (opts: { dryRun: boolean; json: boolean; verbose: boolean; noSudo: boolean; yes: boolean }) => {
   const { clean } = await import("./cleaners/system.js");
   const result = await clean(opts as CleanOptions);
   outputResult(result, opts.json);
@@ -62,7 +62,7 @@ addCleanOptions(
   cleanCmd
     .command("brew")
     .description("Run brew cleanup and autoremove")
-).action(async (opts: { dryRun: boolean; json: boolean }) => {
+).action(async (opts: { dryRun: boolean; json: boolean; verbose: boolean; noSudo: boolean; yes: boolean }) => {
   const { clean } = await import("./cleaners/brew.js");
   const result = await clean(opts as CleanOptions);
   outputResult(result, opts.json);
@@ -75,7 +75,7 @@ addCleanOptions(
     .command("node")
     .description("Clean npm/yarn/pnpm caches and orphan node_modules")
     .option("--include-orphans", "Also delete orphan node_modules (use carefully in monorepos)", false)
-).action(async (opts: { dryRun: boolean; json: boolean; verbose: boolean; includeOrphans: boolean }) => {
+).action(async (opts: { dryRun: boolean; json: boolean; verbose: boolean; noSudo: boolean; yes: boolean; includeOrphans: boolean }) => {
   const { clean } = await import("./cleaners/node.js");
   const result = await clean(opts);
   outputResult(result, opts.json);
@@ -87,7 +87,7 @@ addCleanOptions(
   cleanCmd
     .command("browser")
     .description("Clean Chrome, Firefox, Safari, Arc, and Brave caches")
-).action(async (opts: { dryRun: boolean; json: boolean }) => {
+).action(async (opts: { dryRun: boolean; json: boolean; verbose: boolean; noSudo: boolean; yes: boolean }) => {
   const { clean } = await import("./cleaners/browser.js");
   const result = await clean(opts as CleanOptions);
   outputResult(result, opts.json);
@@ -99,7 +99,7 @@ addCleanOptions(
   cleanCmd
     .command("docker")
     .description("Prune Docker containers, images, volumes, and build cache")
-).action(async (opts: { dryRun: boolean; json: boolean }) => {
+).action(async (opts: { dryRun: boolean; json: boolean; verbose: boolean; noSudo: boolean; yes: boolean }) => {
   const { clean } = await import("./cleaners/docker.js");
   const result = await clean(opts as CleanOptions);
   outputResult(result, opts.json);
@@ -111,7 +111,7 @@ addCleanOptions(
   cleanCmd
     .command("xcode")
     .description("Clean Xcode DerivedData, device support files, and simulators")
-).action(async (opts: { dryRun: boolean; json: boolean }) => {
+).action(async (opts: { dryRun: boolean; json: boolean; verbose: boolean; noSudo: boolean; yes: boolean }) => {
   const { clean } = await import("./cleaners/xcode.js");
   const result = await clean(opts as CleanOptions);
   outputResult(result, opts.json);
@@ -123,7 +123,7 @@ addCleanOptions(
   cleanCmd
     .command("all")
     .description("Run all cleaners in sequence with space recovery summary")
-).action(async (opts: { dryRun: boolean; json: boolean }) => {
+).action(async (opts: { dryRun: boolean; json: boolean; verbose: boolean; noSudo: boolean; yes: boolean }) => {
   const { clean } = await import("./cleaners/all.js");
   const result = await clean(opts as CleanOptions);
   outputResult(result, opts.json);
@@ -136,7 +136,7 @@ addCleanOptions(
   program
     .command("system")
     .description("Shorthand for: clean system")
-).action(async (opts: { dryRun: boolean; json: boolean }) => {
+).action(async (opts: { dryRun: boolean; json: boolean; verbose: boolean; noSudo: boolean; yes: boolean }) => {
   const { clean } = await import("./cleaners/system.js");
   const result = await clean(opts as CleanOptions);
   outputResult(result, opts.json);
@@ -147,7 +147,7 @@ addCleanOptions(
   program
     .command("brew")
     .description("Shorthand for: clean brew")
-).action(async (opts: { dryRun: boolean; json: boolean }) => {
+).action(async (opts: { dryRun: boolean; json: boolean; verbose: boolean; noSudo: boolean; yes: boolean }) => {
   const { clean } = await import("./cleaners/brew.js");
   const result = await clean(opts as CleanOptions);
   outputResult(result, opts.json);
@@ -159,7 +159,7 @@ addCleanOptions(
     .command("node")
     .description("Shorthand for: clean node")
     .option("--include-orphans", "Also delete orphan node_modules (use carefully in monorepos)", false)
-).action(async (opts: { dryRun: boolean; json: boolean; verbose: boolean; includeOrphans: boolean }) => {
+).action(async (opts: { dryRun: boolean; json: boolean; verbose: boolean; noSudo: boolean; yes: boolean; includeOrphans: boolean }) => {
   const { clean } = await import("./cleaners/node.js");
   const result = await clean(opts);
   outputResult(result, opts.json);
@@ -170,7 +170,7 @@ addCleanOptions(
   program
     .command("browser")
     .description("Shorthand for: clean browser")
-).action(async (opts: { dryRun: boolean; json: boolean }) => {
+).action(async (opts: { dryRun: boolean; json: boolean; verbose: boolean; noSudo: boolean; yes: boolean }) => {
   const { clean } = await import("./cleaners/browser.js");
   const result = await clean(opts as CleanOptions);
   outputResult(result, opts.json);
@@ -181,7 +181,7 @@ addCleanOptions(
   program
     .command("docker")
     .description("Shorthand for: clean docker")
-).action(async (opts: { dryRun: boolean; json: boolean }) => {
+).action(async (opts: { dryRun: boolean; json: boolean; verbose: boolean; noSudo: boolean; yes: boolean }) => {
   const { clean } = await import("./cleaners/docker.js");
   const result = await clean(opts as CleanOptions);
   outputResult(result, opts.json);
@@ -192,7 +192,7 @@ addCleanOptions(
   program
     .command("xcode")
     .description("Shorthand for: clean xcode")
-).action(async (opts: { dryRun: boolean; json: boolean }) => {
+).action(async (opts: { dryRun: boolean; json: boolean; verbose: boolean; noSudo: boolean; yes: boolean }) => {
   const { clean } = await import("./cleaners/xcode.js");
   const result = await clean(opts as CleanOptions);
   outputResult(result, opts.json);
@@ -203,7 +203,7 @@ addCleanOptions(
   program
     .command("all")
     .description("Shorthand for: clean all")
-).action(async (opts: { dryRun: boolean; json: boolean }) => {
+).action(async (opts: { dryRun: boolean; json: boolean; verbose: boolean; noSudo: boolean; yes: boolean }) => {
   const { clean } = await import("./cleaners/all.js");
   const result = await clean(opts as CleanOptions);
   outputResult(result, opts.json);

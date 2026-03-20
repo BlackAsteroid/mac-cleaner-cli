@@ -58,7 +58,7 @@ export async function clean(options: CleanOptions): Promise<CleanResult> {
   }
 
   if (options.dryRun) {
-    if (spinner) spinner.succeed(chalk.yellow("✔ Dry run — nothing deleted"));
+    if (spinner) spinner.succeed(chalk.yellow("Dry run — nothing deleted"));
     for (const { browser, path: p } of allCandidates) {
       const size = duBytes(p);
       if (options.verbose && !options.json) {
@@ -89,7 +89,7 @@ export async function clean(options: CleanOptions): Promise<CleanResult> {
     }
   }
 
-  if (spinner) spinner.succeed(chalk.green("✔ Browser caches cleaned"));
+  if (spinner) spinner.succeed(chalk.green("Browser caches cleaned"));
 
   if (!options.json && !(options as any)._suppressTable) {
     renderSummaryTable([{ module: "Browser", paths: cleanedPaths.length, freed, status: "freed", warnings: errors.length }]);
