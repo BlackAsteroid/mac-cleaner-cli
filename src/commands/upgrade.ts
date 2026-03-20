@@ -1,13 +1,13 @@
-import { createRequire } from "module";
+import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import chalk from "chalk";
 import ora from "ora";
 import { getLatestVersion, isNewer, runNpmUpgrade } from "../utils/version.js";
 
+// dist/commands/upgrade.js → dist/../package.json (one level up from dist/)
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const require = createRequire(import.meta.url);
-const pkg = require(join(__dirname, "..", "..", "package.json")) as { version: string; name: string };
+const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf8")) as { version: string; name: string };
 
 export interface UpgradeOptions {
   json: boolean;
