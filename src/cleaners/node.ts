@@ -8,6 +8,7 @@ import { CleanOptions, CleanResult } from "../types.js";
 import { duBytes, formatBytes } from "../utils/du.js";
 import { renderSummaryTable, verboseLine } from "../utils/format.js";
 import { isSafeToDelete } from "../utils/safeDelete.js";
+import { promptSudoPassword, verifySudoPassword } from "../utils/sudo.js";
 
 const NPM_CACHE_PATHS = [
   path.join(os.homedir(), ".npm"),
@@ -85,11 +86,12 @@ function findOrphanNodeModules(baseDir: string, maxDepth = 3): string[] {
   return orphans;
 }
 
-function cleanWithTool(
+async function cleanWithTool(
   tool: string,
   args: string[],
-  errors: string[]
-): boolean {
+  errors: string[],
+  options?: NodeCleanOptions
+): Promise<boolean> {
   const which = spawnSync("which", [tool], { encoding: "utf8", timeout: 5000 });
   if (which.status !== 0 || !which.stdout.trim()) {
     errors.push(`${tool} not found — skipping`);
@@ -100,16 +102,63 @@ function cleanWithTool(
   if (result.status !== 0) {
     const stderr = result.stderr || "";
     const isPermissionError = /EACCES|permission denied/i.test(stderr);
+
     if (tool === "npm" && isPermissionError) {
-      // Issue #63: show actionable hint for npm permission errors
-      errors.push(
-        `npm cache is owned by root — fix with:\n` +
-        `  sudo chown -R $(id -u):$(id -g) ~/.npm\n` +
-        `  Then re-run: mac-cleaner node`
-      );
-    } else {
-      errors.push(`${tool} ${args.join(" ")} failed: ${stderr}`);
+      // Issue #66: if we have a TTY and sudo is not disabled, auto-fix ownership
+      const canAutoFix = process.stdin.isTTY && !options?.noSudo && !options?.yes && !options?.json;
+
+      if (canAutoFix) {
+        process.stderr.write(
+          `\n  🔒 npm cache is owned by root — enter sudo password to fix automatically:\n`
+        );
+        const passwordBuf = await promptSudoPassword([os.homedir() + "/.npm"]);
+
+        if (passwordBuf.length > 0) {
+          try {
+            const valid = verifySudoPassword(passwordBuf);
+            if (valid) {
+              // Fix ownership: sudo chown -R $(id -u):$(id -g) ~/.npm
+              const uid = process.getuid ? process.getuid() : 501;
+              const gid = process.getgid ? process.getgid() : 20;
+              const chown = spawnSync(
+                "sudo",
+                ["-S", "chown", "-R", `${uid}:${gid}`, os.homedir() + "/.npm"],
+                { input: Buffer.concat([passwordBuf, Buffer.from("\n")]), timeout: 30000 }
+              );
+
+              if (chown.status === 0) {
+                // Retry npm cache clean
+                const retry = spawnSync(tool, args, { encoding: "utf8", timeout: 120000 });
+                if (retry.status === 0) return true;
+                errors.push(`npm cache clean failed after chown: ${retry.stderr}`);
+              } else {
+                errors.push("sudo chown failed — trying fallback hint");
+              }
+            } else {
+              errors.push("Incorrect sudo password — npm ownership not fixed");
+            }
+          } finally {
+            passwordBuf.fill(0);
+          }
+        } else {
+          // User pressed Enter to skip
+          errors.push(
+            `npm cache is owned by root — fix with:\n` +
+            `  sudo chown -R $(id -u):$(id -g) ~/.npm`
+          );
+        }
+      } else {
+        // Non-TTY / CI / --no-sudo: show hint
+        errors.push(
+          `npm cache is owned by root — fix with:\n` +
+          `  sudo chown -R $(id -u):$(id -g) ~/.npm\n` +
+          `  Then re-run: mac-cleaner node`
+        );
+      }
+      return false;
     }
+
+    errors.push(`${tool} ${args.join(" ")} failed: ${stderr}`);
     return false;
   }
   return true;
@@ -168,13 +217,13 @@ export async function clean(options: NodeCleanOptions): Promise<CleanResult> {
   const sizeBefore = allCachePaths.reduce((sum, p) => sum + duBytes(p), 0);
 
   if (spinner) spinner.text = "Cleaning npm cache...";
-  cleanWithTool("npm", ["cache", "clean", "--force"], errors);
+  await cleanWithTool("npm", ["cache", "clean", "--force"], errors, options);
 
   if (spinner) spinner.text = "Cleaning yarn cache...";
-  cleanWithTool("yarn", ["cache", "clean"], errors);
+  await cleanWithTool("yarn", ["cache", "clean"], errors, options);
 
   if (spinner) spinner.text = "Cleaning pnpm cache...";
-  cleanWithTool("pnpm", ["store", "prune"], errors);
+  await cleanWithTool("pnpm", ["store", "prune"], errors, options);
 
   for (const p of allCachePaths) {
     if (!cleanedPaths.includes(p)) cleanedPaths.push(p);
