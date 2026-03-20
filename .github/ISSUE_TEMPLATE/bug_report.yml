@@ -1,0 +1,80 @@
+name: Bug report
+description: Something isn't working as expected
+title: "fix: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill out the fields below so we can reproduce and fix it quickly.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the bug clearly.
+      placeholder: "When I run mac-cleaner system, it..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+      description: What should have happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce this?
+      value: |
+        1. Run `mac-cleaner ...`
+        2. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Full output
+      description: Paste the complete output, including any errors.
+      render: shell
+
+  - type: input
+    id: version
+    attributes:
+      label: mac-cleaner version
+      description: Run `mac-cleaner --version`
+      placeholder: "1.8.0"
+    validations:
+      required: true
+
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "macOS Sonoma 14.4"
+    validations:
+      required: true
+
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      description: Run `node --version`
+      placeholder: "v22.0.0"
+
+  - type: input
+    id: terminal
+    attributes:
+      label: Terminal
+      placeholder: "iTerm2 / Terminal.app / Warp"
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Anything else that might be relevant.

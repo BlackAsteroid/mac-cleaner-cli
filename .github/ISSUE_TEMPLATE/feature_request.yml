@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest something new or improved
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Got an idea? Great. Tell us the problem you're trying to solve and what you'd like to see.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you solving?
+      description: Describe the problem or limitation you're running into.
+      placeholder: "I always have to manually check... because mac-cleaner doesn't..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: What would you like?
+      description: Describe the feature clearly.
+    validations:
+      required: true
+
+  - type: textarea
+    id: who
+    attributes:
+      label: Who would benefit?
+      description: Who is this for? What's the use case?
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What else did you consider? Why is this better?
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Screenshots, examples, links, etc.
