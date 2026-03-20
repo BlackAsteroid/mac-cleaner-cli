@@ -103,6 +103,7 @@ export function sudoRmRf(targetPath: string, passwordBuf: Buffer): { freed: numb
   const stdinInput = Buffer.concat([passwordBuf, Buffer.from("\n")]);
   const result = spawnSync("sudo", ["-S", "rm", "-rf", targetPath], {
     input: stdinInput,
+    encoding: "utf8",
     timeout: 30000,
   });
 
