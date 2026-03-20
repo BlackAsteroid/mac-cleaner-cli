@@ -6,7 +6,7 @@ import chalk from "chalk";
 import { createSpinner } from "../utils/spinner.js";
 import { CleanOptions, CleanResult } from "../types.js";
 import { duBytes, formatBytes } from "../utils/du.js";
-import { renderSummaryTable, verboseLine } from "../utils/format.js";
+import { renderSummaryTable, verboseLine, truncatePath } from "../utils/format.js";
 import { isSafeToDelete } from "../utils/safeDelete.js";
 import { promptSudoPassword, verifySudoPassword } from "../utils/sudo.js";
 
@@ -241,6 +241,7 @@ export async function clean(options: NodeCleanOptions): Promise<CleanResult> {
     if (options.includeOrphans) {
       if (spinner) spinner.text = `Removing ${orphans.length} orphan node_modules...`;
       for (const orphan of orphans) {
+        if (spinner) spinner.text = `Removing orphan: ${truncatePath(orphan)}`;
         // Security (#43): resolve symlinks before deletion to prevent traversal attacks
         if (!isSafeToDelete(orphan, os.homedir())) {
           errors.push(`Skipped (symlink escape detected): ${orphan}`);

@@ -83,6 +83,20 @@ function statusStr(icon: string, width: number): string {
 }
 
 /**
+ * Truncates a filesystem path to fit within a terminal column limit.
+ * Truncates from the left so the meaningful end of the path is always visible.
+ *
+ * Example: /Users/pablo/Library/Caches/Google/Chrome → …ry/Caches/Google/Chrome
+ */
+export function truncatePath(filePath: string, maxLen?: number): string {
+  const cols = maxLen ?? (process.stdout.columns || 80);
+  // Reserve space for spinner prefix (≈ 12 chars: "  ⟳ Cleaning: ")
+  const available = Math.max(20, cols - 14);
+  if (filePath.length <= available) return filePath;
+  return `…${filePath.slice(-(available - 1))}`;
+}
+
+/**
  * Prints a single verbose path line (only shown when --verbose is active).
  */
 export function verboseLine(label: string, targetPath: string, size: number, dryRun: boolean): void {

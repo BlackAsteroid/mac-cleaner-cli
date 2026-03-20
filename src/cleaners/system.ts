@@ -6,7 +6,7 @@ import chalk from "chalk";
 import { createSpinner } from "../utils/spinner.js";
 import { CleanOptions, CleanResult } from "../types.js";
 import { duBytes, formatBytes } from "../utils/du.js";
-import { renderSummaryTable, SummaryRow, verboseLine } from "../utils/format.js";
+import { renderSummaryTable, SummaryRow, verboseLine, truncatePath } from "../utils/format.js";
 import { isPrivilegedPath } from "../utils/privilegedPaths.js";
 import { promptSudoPassword, sudoRmRf, verifySudoPassword } from "../utils/sudo.js";
 import { isSafeToDelete } from "../utils/safeDelete.js";
@@ -151,6 +151,7 @@ export async function clean(options: CleanOptions): Promise<CleanResult> {
   let permissionSkipped = 0;
 
   for (const p of normalPaths) {
+    if (spinner) spinner.text = `Cleaning: ${truncatePath(p)}`;
     const prevErrorCount = errors.length;
     const size = removePathSafe(p, errors, os.homedir(), options);
     if (size > 0 || !fs.existsSync(p)) {
