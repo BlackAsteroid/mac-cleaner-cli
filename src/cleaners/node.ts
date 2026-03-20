@@ -98,7 +98,18 @@ function cleanWithTool(
 
   const result = spawnSync(tool, args, { encoding: "utf8", timeout: 120000 });
   if (result.status !== 0) {
-    errors.push(`${tool} ${args.join(" ")} failed: ${result.stderr}`);
+    const stderr = result.stderr || "";
+    const isPermissionError = /EACCES|permission denied/i.test(stderr);
+    if (tool === "npm" && isPermissionError) {
+      // Issue #63: show actionable hint for npm permission errors
+      errors.push(
+        `npm cache is owned by root — fix with:\n` +
+        `  sudo chown -R $(id -u):$(id -g) ~/.npm\n` +
+        `  Then re-run: mac-cleaner node`
+      );
+    } else {
+      errors.push(`${tool} ${args.join(" ")} failed: ${stderr}`);
+    }
     return false;
   }
   return true;
