@@ -71,9 +71,10 @@ addCleanOptions(
   cleanCmd
     .command("node")
     .description("Clean npm/yarn/pnpm caches and orphan node_modules")
-).action(async (opts: { dryRun: boolean; json: boolean }) => {
+    .option("--include-orphans", "Also delete orphan node_modules (use carefully in monorepos)", false)
+).action(async (opts: { dryRun: boolean; json: boolean; includeOrphans: boolean }) => {
   const { clean } = await import("./cleaners/node.js");
-  const result = await clean(opts as CleanOptions);
+  const result = await clean(opts);
   outputResult(result, opts.json);
   process.exit(result.ok ? 0 : 1);
 });
@@ -154,9 +155,10 @@ addCleanOptions(
   program
     .command("node")
     .description("Shorthand for: clean node")
-).action(async (opts: { dryRun: boolean; json: boolean }) => {
+    .option("--include-orphans", "Also delete orphan node_modules (use carefully in monorepos)", false)
+).action(async (opts: { dryRun: boolean; json: boolean; includeOrphans: boolean }) => {
   const { clean } = await import("./cleaners/node.js");
-  const result = await clean(opts as CleanOptions);
+  const result = await clean(opts);
   outputResult(result, opts.json);
   process.exit(result.ok ? 0 : 1);
 });

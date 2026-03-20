@@ -23,9 +23,29 @@ const PNPM_CACHE_PATHS = [
   path.join(os.homedir(), ".local", "share", "pnpm", "store"),
 ];
 
+const ANCESTOR_SEARCH_DEPTH = 3;
+
+/**
+ * Walk up to `ancestorDepth` levels from a directory to find a package.json.
+ * This catches monorepo setups where package.json is 1-3 levels above node_modules.
+ */
+function hasAncestorPackageJson(dir: string, levelsUp = ANCESTOR_SEARCH_DEPTH): boolean {
+  let current = dir;
+  for (let i = 0; i < levelsUp; i++) {
+    if (fs.existsSync(path.join(current, "package.json"))) return true;
+    const parent = path.dirname(current);
+    if (parent === current) break; // filesystem root
+    current = parent;
+  }
+  return false;
+}
+
 /**
  * Walk up to depth 3 from home directory, finding node_modules folders
- * where the parent directory has NO package.json (orphaned).
+ * that have no package.json anywhere in their ancestor chain (up to 3 levels).
+ *
+ * This avoids false positives in monorepos where node_modules exists in a
+ * sub-package but the root package.json is a few levels up.
  */
 function findOrphanNodeModules(baseDir: string, maxDepth = 3): string[] {
   const orphans: string[] = [];
@@ -44,16 +64,15 @@ function findOrphanNodeModules(baseDir: string, maxDepth = 3): string[] {
       const fullPath = path.join(dir, entry.name);
 
       if (entry.name === "node_modules") {
-        // Check if parent has package.json
-        const parentPackageJson = path.join(dir, "package.json");
-        if (!fs.existsSync(parentPackageJson)) {
+        // Check the parent directory AND up to 3 ancestors for package.json
+        if (!hasAncestorPackageJson(dir, ANCESTOR_SEARCH_DEPTH)) {
           orphans.push(fullPath);
         }
-        // Don't recurse into node_modules
+        // Never recurse into node_modules
         continue;
       }
 
-      // Skip hidden dirs (except some known project folders)
+      // Skip hidden dirs
       if (entry.name.startsWith(".")) continue;
 
       walk(fullPath, depth + 1);
@@ -83,35 +102,48 @@ function cleanWithTool(
   return true;
 }
 
-export async function clean(options: CleanOptions): Promise<CleanResult> {
+export interface NodeCleanOptions extends CleanOptions {
+  /** If true, orphan node_modules directories will be deleted. Default: false (warn only). */
+  includeOrphans?: boolean;
+}
+
+export async function clean(options: NodeCleanOptions): Promise<CleanResult> {
   const spinner = options.json ? null : ora("Scanning Node.js caches...").start();
   const errors: string[] = [];
   const cleanedPaths: string[] = [];
   let freed = 0;
 
-  // Collect paths to clean
+  // Collect cache paths to clean
   const allCachePaths = [
     ...NPM_CACHE_PATHS,
     ...YARN_CACHE_PATHS,
     ...PNPM_CACHE_PATHS,
   ].filter((p) => fs.existsSync(p));
 
-  // Find orphan node_modules
-  if (spinner) spinner.text = "Scanning for orphan node_modules (depth 3)...";
+  // Find orphan node_modules (always detect, but only delete if --include-orphans)
+  if (spinner) spinner.text = "Scanning for orphan node_modules (depth 3, checking 3 ancestors)...";
   const orphans = findOrphanNodeModules(os.homedir(), 3);
-
-  const allTargets = [...allCachePaths, ...orphans];
 
   if (options.dryRun) {
     if (spinner) spinner.succeed(chalk.yellow("Dry run — nothing deleted"));
-    for (const p of allTargets) {
+    for (const p of allCachePaths) {
       const size = duBytes(p);
       if (!options.json) {
-        const label = orphans.includes(p) ? "[orphan node_modules]" : "[cache]";
-        console.log(chalk.gray(`  [dry-run] ${label} ${p} (${formatBytes(size)})`));
+        console.log(chalk.gray(`  [dry-run] [cache] ${p} (${formatBytes(size)})`));
       }
       cleanedPaths.push(p);
       freed += size;
+    }
+    for (const p of orphans) {
+      const size = duBytes(p);
+      if (!options.json) {
+        const action = options.includeOrphans ? "[dry-run, would delete]" : "[dry-run, use --include-orphans to delete]";
+        console.log(chalk.gray(`  ${action} [orphan node_modules] ${p} (${formatBytes(size)})`));
+      }
+      if (options.includeOrphans) {
+        cleanedPaths.push(p);
+        freed += size;
+      }
     }
     return { ok: true, paths: cleanedPaths, freed, errors };
   }
@@ -128,24 +160,36 @@ export async function clean(options: CleanOptions): Promise<CleanResult> {
   if (spinner) spinner.text = "Cleaning pnpm cache...";
   cleanWithTool("pnpm", ["store", "prune"], errors);
 
-  // Add cache paths that exist
   for (const p of allCachePaths) {
     if (!cleanedPaths.includes(p)) cleanedPaths.push(p);
   }
 
-  // Remove orphan node_modules
-  if (spinner) spinner.text = `Removing ${orphans.length} orphan node_modules...`;
-  for (const orphan of orphans) {
-    const size = duBytes(orphan);
-    try {
-      fs.rmSync(orphan, { recursive: true, force: true });
-      cleanedPaths.push(orphan);
-      freed += size;
-      if (!options.json) {
-        console.log(chalk.gray(`  removed orphan: ${orphan} (${formatBytes(size)})`));
+  // Orphan node_modules — warn always, delete only if --include-orphans
+  if (orphans.length > 0) {
+    if (options.includeOrphans) {
+      if (spinner) spinner.text = `Removing ${orphans.length} orphan node_modules...`;
+      for (const orphan of orphans) {
+        const size = duBytes(orphan);
+        try {
+          fs.rmSync(orphan, { recursive: true, force: true });
+          cleanedPaths.push(orphan);
+          freed += size;
+          if (!options.json) {
+            console.log(chalk.gray(`  removed orphan: ${orphan} (${formatBytes(size)})`));
+          }
+        } catch (err) {
+          errors.push(`Failed to remove ${orphan}: ${(err as Error).message}`);
+        }
       }
-    } catch (err) {
-      errors.push(`Failed to remove ${orphan}: ${(err as Error).message}`);
+    } else {
+      // Warn but don't delete
+      if (!options.json) {
+        console.log(chalk.yellow(`\n  ⚠️  Found ${orphans.length} orphan node_modules (not deleted — run with --include-orphans to remove):`));
+        for (const orphan of orphans) {
+          const size = duBytes(orphan);
+          console.log(chalk.gray(`    ${orphan} (${formatBytes(size)})`));
+        }
+      }
     }
   }
 
