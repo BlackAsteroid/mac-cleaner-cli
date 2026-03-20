@@ -44,6 +44,24 @@ function secureOverwriteFile(filePath: string): void {
   }
 }
 
+// Paths that require Full Disk Access (TCC), not just sudo.
+// macOS's TCC framework blocks these even with elevated privileges unless
+// the Terminal app has Full Disk Access in System Settings → Privacy.
+const FDA_REQUIRED_PATTERNS = [
+  "com.apple.Safari",
+  "com.apple.containermanagerd",
+  "com.apple.shortcuts",
+  "com.apple.Notes",
+  "com.apple.Mail",
+  "com.apple.Messages",
+  "CloudDocuments",
+  "com.apple.iCloud",
+];
+
+function requiresFullDiskAccess(targetPath: string): boolean {
+  return FDA_REQUIRED_PATTERNS.some((pattern) => targetPath.includes(pattern));
+}
+
 function removePathSafe(targetPath: string, errors: string[], allowedBase: string, options?: CleanOptions): number {
   // Security (#43): check that resolved path doesn't escape the allowed base via symlinks
   if (!isSafeToDelete(targetPath, allowedBase)) {
@@ -66,7 +84,17 @@ function removePathSafe(targetPath: string, errors: string[], allowedBase: strin
     fs.rmSync(targetPath, { recursive: true, force: true });
     return size;
   } catch (err) {
-    errors.push(`Failed to remove ${targetPath}: ${(err as Error).message}`);
+    const msg = (err as Error).message;
+    const isPermError = msg.includes("EPERM") || msg.includes("EACCES");
+    if (isPermError && requiresFullDiskAccess(targetPath)) {
+      // Issue #78: FDA-protected paths show a helpful hint instead of raw error
+      errors.push(
+        `Skipped (Full Disk Access required): ${targetPath}\n` +
+        `  → Enable in: System Settings → Privacy & Security → Full Disk Access → add Terminal`
+      );
+    } else {
+      errors.push(`Failed to remove ${targetPath}: ${msg}`);
+    }
     return 0;
   }
 }
@@ -224,7 +252,7 @@ export async function clean(options: CleanOptions): Promise<CleanResult> {
   // #25: Warn when paths were skipped due to permissions (not in json mode, not in sudo mode)
   const noSudoMode = options.noSudo || options.yes || !process.stdin.isTTY;
   if (permissionSkipped > 0 && !options.json && noSudoMode) {
-    console.warn(chalk.yellow(`  ⚠ ${permissionSkipped} path(s) skipped — require elevated permissions. Run with sudo or without --no-sudo to clean them.`));
+    console.warn(chalk.yellow(`  ⚠ ${permissionSkipped} path(s) skipped — require elevated permissions. Run without --no-sudo to attempt cleanup.`));
   }
 
   if (!options.json && !suppressTable) {
