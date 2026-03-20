@@ -6,7 +6,7 @@ import chalk from "chalk";
 import { createSpinner } from "../utils/spinner.js";
 import { CleanOptions, CleanResult } from "../types.js";
 import { duBytes, formatBytes } from "../utils/du.js";
-import { renderSummaryTable, verboseLine } from "../utils/format.js";
+import { renderSummaryTable, verboseLine, truncatePath } from "../utils/format.js";
 import { writeAuditLog } from "../utils/auditLog.js";
 
 const home = os.homedir();
@@ -78,6 +78,7 @@ export async function clean(options: CleanOptions): Promise<CleanResult> {
   if (spinner) spinner.text = `Cleaning ${allCandidates.length} browser cache paths...`;
 
   for (const { browser, path: p } of allCandidates) {
+    if (spinner) spinner.text = `[${browser}] Cleaning: ${truncatePath(p)}`;
     const size = duBytes(p);
     try {
       // #41: Secure delete — overwrite file with zeros before removal (macOS, files only)

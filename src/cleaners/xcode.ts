@@ -6,7 +6,7 @@ import chalk from "chalk";
 import { createSpinner } from "../utils/spinner.js";
 import { CleanOptions, CleanResult } from "../types.js";
 import { duBytes, formatBytes } from "../utils/du.js";
-import { renderSummaryTable, verboseLine } from "../utils/format.js";
+import { renderSummaryTable, verboseLine, truncatePath } from "../utils/format.js";
 
 const home = os.homedir();
 
@@ -101,7 +101,7 @@ export async function clean(options: CleanOptions): Promise<CleanResult> {
   // Clean DerivedData and caches
   for (const p of targetPaths) {
     if (fs.existsSync(p)) {
-      if (spinner) spinner.text = `Cleaning ${path.basename(p)}...`;
+      if (spinner) spinner.text = `Cleaning: ${truncatePath(p)}`;
       const size = duBytes(p);
       try {
         fs.rmSync(p, { recursive: true, force: true });

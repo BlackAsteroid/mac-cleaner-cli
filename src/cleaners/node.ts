@@ -6,7 +6,7 @@ import chalk from "chalk";
 import { createSpinner } from "../utils/spinner.js";
 import { CleanOptions, CleanResult } from "../types.js";
 import { duBytes, formatBytes } from "../utils/du.js";
-import { renderSummaryTable, verboseLine } from "../utils/format.js";
+import { renderSummaryTable, verboseLine, truncatePath } from "../utils/format.js";
 import { isSafeToDelete } from "../utils/safeDelete.js";
 import { promptSudoPassword, verifySudoPassword } from "../utils/sudo.js";
 
@@ -86,11 +86,14 @@ function findOrphanNodeModules(baseDir: string, maxDepth = 3): string[] {
   return orphans;
 }
 
+import type { Spinner } from "../utils/spinner.js";
+
 async function cleanWithTool(
   tool: string,
   args: string[],
   errors: string[],
-  options?: NodeCleanOptions
+  options?: NodeCleanOptions,
+  spinner?: Spinner | null
 ): Promise<boolean> {
   const which = spawnSync("which", [tool], { encoding: "utf8", timeout: 5000 });
   if (which.status !== 0 || !which.stdout.trim()) {
@@ -108,6 +111,8 @@ async function cleanWithTool(
       const canAutoFix = process.stdin.isTTY && !options?.noSudo && !options?.yes && !options?.json;
 
       if (canAutoFix) {
+        // Stop the spinner before showing the sudo prompt — same fix as Issue #48
+        if (spinner) spinner.stop();
         process.stderr.write(
           `\n  🔒 npm cache is owned by root — enter sudo password to fix automatically:\n`
         );
@@ -155,6 +160,8 @@ async function cleanWithTool(
           `  Then re-run: mac-cleaner node`
         );
       }
+      // Restart spinner after the sudo interaction so subsequent steps display cleanly
+      if (spinner) spinner.start();
       return false;
     }
 
@@ -217,13 +224,13 @@ export async function clean(options: NodeCleanOptions): Promise<CleanResult> {
   const sizeBefore = allCachePaths.reduce((sum, p) => sum + duBytes(p), 0);
 
   if (spinner) spinner.text = "Cleaning npm cache...";
-  await cleanWithTool("npm", ["cache", "clean", "--force"], errors, options);
+  await cleanWithTool("npm", ["cache", "clean", "--force"], errors, options, spinner);
 
   if (spinner) spinner.text = "Cleaning yarn cache...";
-  await cleanWithTool("yarn", ["cache", "clean"], errors, options);
+  await cleanWithTool("yarn", ["cache", "clean"], errors, options, spinner);
 
   if (spinner) spinner.text = "Cleaning pnpm cache...";
-  await cleanWithTool("pnpm", ["store", "prune"], errors, options);
+  await cleanWithTool("pnpm", ["store", "prune"], errors, options, spinner);
 
   for (const p of allCachePaths) {
     if (!cleanedPaths.includes(p)) cleanedPaths.push(p);
@@ -234,6 +241,7 @@ export async function clean(options: NodeCleanOptions): Promise<CleanResult> {
     if (options.includeOrphans) {
       if (spinner) spinner.text = `Removing ${orphans.length} orphan node_modules...`;
       for (const orphan of orphans) {
+        if (spinner) spinner.text = `Removing orphan: ${truncatePath(orphan)}`;
         // Security (#43): resolve symlinks before deletion to prevent traversal attacks
         if (!isSafeToDelete(orphan, os.homedir())) {
           errors.push(`Skipped (symlink escape detected): ${orphan}`);
