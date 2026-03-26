@@ -1,5 +1,4 @@
 import { spawnSync } from "child_process";
-import * as readline from "readline";
 import { isPrivilegedPath } from "./privilegedPaths.js";
 
 /**
@@ -24,35 +23,33 @@ export async function promptSudoPassword(paths: string[]): Promise<Buffer> {
     }
     process.stdout.write("\n  Enter sudo password to include these (or press Enter to skip): ");
 
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-      terminal: true,
-    });
-
-    // Hide input characters
+    // Enable raw mode to suppress terminal echo — characters won't be
+    // printed by the OS, only our explicit "•" bullets appear.
     if (process.stdin.isTTY) {
       process.stdin.setRawMode(true);
     }
+    process.stdin.resume();
 
     // Collect raw bytes — avoid building a string to keep the data in controlled memory
     const chunks: Buffer[] = [];
+
+    const cleanup = () => {
+      if (process.stdin.isTTY) process.stdin.setRawMode(false);
+      process.stdin.removeListener("data", onData);
+      process.stdin.pause();
+    };
 
     const onData = (char: Buffer) => {
       const ch = char.toString("utf8");
 
       if (ch === "\r" || ch === "\n") {
         // Enter pressed
-        if (process.stdin.isTTY) process.stdin.setRawMode(false);
-        process.stdin.removeListener("data", onData);
-        rl.close();
+        cleanup();
         process.stdout.write("\n");
         resolve(Buffer.concat(chunks));
       } else if (ch === "\u0003") {
         // Ctrl+C — treat as skip
-        if (process.stdin.isTTY) process.stdin.setRawMode(false);
-        process.stdin.removeListener("data", onData);
-        rl.close();
+        cleanup();
         process.stdout.write("\n");
         resolve(Buffer.alloc(0));
       } else if (ch === "\u007f" || ch === "\b") {
@@ -68,11 +65,6 @@ export async function promptSudoPassword(paths: string[]): Promise<Buffer> {
     };
 
     process.stdin.on("data", onData);
-    rl.on("close", () => {
-      if (process.stdin.isTTY) process.stdin.setRawMode(false);
-      process.stdin.removeListener("data", onData);
-      resolve(Buffer.concat(chunks));
-    });
   });
 }
 
