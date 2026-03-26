@@ -100,6 +100,8 @@ function removePathSafe(targetPath: string, errors: string[], allowedBase: strin
         `Skipped (Full Disk Access required): ${targetPath}\n` +
         `  → Enable in: System Settings → Privacy & Security → Full Disk Access → add Terminal`
       );
+    } else if (isPermError) {
+      errors.push(`Skipped (elevated permissions required): ${targetPath}`);
     } else {
       errors.push(`Failed to remove ${targetPath}: ${msg}`);
     }
