@@ -1,4 +1,63 @@
+import { Worker } from "worker_threads";
 import type { CleanOptions, CleanResult } from "../types.js";
+
+const workerScript = `
+import { parentPort, workerData } from "worker_threads";
+console.log = () => {};
+console.warn = () => {};
+async function run() {
+  try {
+    const cleaner = await import(workerData.importPath);
+    const result = await cleaner.clean(workerData.options);
+    parentPort.postMessage({ ok: true, result });
+  } catch (err) {
+    parentPort.postMessage({ ok: false, error: String(err) });
+  }
+}
+run();
+`;
+
+/**
+ * Runs a cleaner in a Worker thread so the main event loop stays free
+ * for UI updates (spinner animation, screen redraws).
+ */
+function runInWorker(importPath: string, options: Record<string, unknown>): Promise<CleanResult> {
+  return new Promise((resolve) => {
+    // Use an absolute file:// URL so the worker can resolve the import
+    const absPath = new URL(importPath, import.meta.url).href;
+
+    const worker = new Worker(workerScript, {
+      eval: true,
+      workerData: { importPath: absPath, options },
+    });
+
+    let resolved = false;
+
+    worker.on("message", (msg: { ok: boolean; result?: CleanResult; error?: string }) => {
+      if (resolved) return;
+      resolved = true;
+      if (msg.ok && msg.result) {
+        resolve(msg.result);
+      } else {
+        resolve({ ok: false, paths: [], freed: 0, errors: [msg.error ?? "Worker failed"] });
+      }
+    });
+
+    worker.on("error", (err) => {
+      if (resolved) return;
+      resolved = true;
+      resolve({ ok: false, paths: [], freed: 0, errors: [String(err)] });
+    });
+
+    worker.on("exit", (code) => {
+      if (resolved) return;
+      resolved = true;
+      if (code !== 0) {
+        resolve({ ok: false, paths: [], freed: 0, errors: [`Worker exited with code ${code}`] });
+      }
+    });
+  });
+}
 
 export interface ModuleScanResult {
   name: string;
@@ -40,12 +99,13 @@ export function getModuleList(): ModuleDef[] {
 
 /**
  * Runs all cleaners in dry-run + json mode to get reclaimable space
- * without deleting anything. Suppresses all stdout.
+ * without deleting anything. Each cleaner runs in a Worker thread
+ * so the main event loop stays free for UI updates.
  */
 export async function scanAll(
   onProgress?: (moduleName: string) => void,
 ): Promise<ModuleScanResult[]> {
-  const scanOpts: CleanOptions & { _suppressTable?: boolean } = {
+  const scanOpts: Record<string, unknown> = {
     dryRun: true,
     json: true,
     verbose: false,
@@ -56,17 +116,10 @@ export async function scanAll(
 
   const results: ModuleScanResult[] = [];
 
-  // Suppress console.log during scan to prevent stdout pollution
-  const origLog = console.log;
-  const origWarn = console.warn;
-
   for (const mod of modules) {
     onProgress?.(mod.name);
     try {
-      console.log = () => {};
-      console.warn = () => {};
-      const cleaner = await import(mod.importPath) as { clean: (opts: CleanOptions) => Promise<CleanResult> };
-      const result = await cleaner.clean(scanOpts);
+      const result = await runInWorker(mod.importPath, scanOpts);
       results.push({
         name: mod.name,
         key: mod.key,
@@ -84,9 +137,6 @@ export async function scanAll(
         errors: [`Failed to scan ${mod.name}`],
         ok: false,
       });
-    } finally {
-      console.log = origLog;
-      console.warn = origWarn;
     }
   }
 
@@ -95,12 +145,13 @@ export async function scanAll(
 
 /**
  * Runs specific cleaners (actual clean, not dry-run).
+ * Each cleaner runs in a Worker thread.
  */
 export async function runClean(
   keys: string[],
   onProgress?: (moduleName: string, status: "start" | "done" | "error", result?: CleanResult) => void,
 ): Promise<ModuleScanResult[]> {
-  const cleanOpts: CleanOptions & { _suppressTable?: boolean } = {
+  const cleanOpts: Record<string, unknown> = {
     dryRun: false,
     json: true,
     verbose: false,
@@ -112,16 +163,10 @@ export async function runClean(
   const results: ModuleScanResult[] = [];
   const selected = modules.filter((m) => keys.includes(m.key));
 
-  const origLog = console.log;
-  const origWarn = console.warn;
-
   for (const mod of selected) {
     onProgress?.(mod.name, "start");
     try {
-      console.log = () => {};
-      console.warn = () => {};
-      const cleaner = await import(mod.importPath) as { clean: (opts: CleanOptions) => Promise<CleanResult> };
-      const result = await cleaner.clean(cleanOpts);
+      const result = await runInWorker(mod.importPath, cleanOpts);
       results.push({
         name: mod.name,
         key: mod.key,
@@ -141,9 +186,6 @@ export async function runClean(
         ok: false,
       });
       onProgress?.(mod.name, "error");
-    } finally {
-      console.log = origLog;
-      console.warn = origWarn;
     }
   }
 
