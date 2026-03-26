@@ -289,26 +289,45 @@ program
     await runUpgrade(opts);
   });
 
-// ─── Version check on startup (no args / --help) ───────────────────────────
-// Only runs when the user invokes with no subcommand and is not piped (TTY check)
+// ─── TUI mode ──────────────────────────────────────────────────────────────
+
+program
+  .command("menu")
+  .description("Launch interactive TUI dashboard")
+  .action(async () => {
+    const { launchTui } = await import("./tui/index.js");
+    await launchTui();
+  });
+
+// ─── Parse & default behavior ───────────────────────────────────────────────
 
 const args = process.argv.slice(2);
-const isHelp = args.length === 0 || args[0] === "--help" || args[0] === "-h";
-const isJsonFlag = args.includes("--json");
-const isUpgrade = args[0] === "upgrade";
+const hasCommand = args.length > 0 && !args[0].startsWith("-");
+const isVersionFlag = args.includes("--version") || args.includes("-V");
 
-program.parse(process.argv);
-
-// After parsing, show version check hint if running with no args or --help
-if (isHelp && !isJsonFlag && !isUpgrade && process.stdout.isTTY) {
+if (!hasCommand && !isVersionFlag && process.stdout.isTTY) {
+  // No subcommand given in a TTY -- launch TUI
   void (async () => {
-    const { getLatestVersionCached, isNewer } = await import("./utils/version.js");
-    const latest = await getLatestVersionCached(2500);
-    if (latest && isNewer(pkg.version, latest)) {
-      console.log(
-        `\n💡 ${chalk.bold("New version available:")} ${chalk.gray(pkg.version)} → ${chalk.green(latest)}` +
-        `\n   Run: ${chalk.bold("npm install -g @blackasteroid/mac-cleaner-cli")} to update\n`
-      );
-    }
+    const { launchTui } = await import("./tui/index.js");
+    await launchTui();
   })();
+} else {
+  program.parse(process.argv);
+
+  // Version check hint on --help
+  const isHelp = args[0] === "--help" || args[0] === "-h";
+  const isJsonFlag = args.includes("--json");
+  const isUpgrade = args[0] === "upgrade";
+  if (isHelp && !isJsonFlag && !isUpgrade && process.stdout.isTTY) {
+    void (async () => {
+      const { getLatestVersionCached, isNewer } = await import("./utils/version.js");
+      const latest = await getLatestVersionCached(2500);
+      if (latest && isNewer(pkg.version, latest)) {
+        console.log(
+          `\n💡 ${chalk.bold("New version available:")} ${chalk.gray(pkg.version)} → ${chalk.green(latest)}` +
+          `\n   Run: ${chalk.bold("npm install -g @blackasteroid/mac-cleaner-cli")} to update\n`
+        );
+      }
+    })();
+  }
 }
