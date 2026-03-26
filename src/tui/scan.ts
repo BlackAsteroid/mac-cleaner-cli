@@ -22,9 +22,9 @@ const modules: ModuleDef[] = [
   { name: "Browser",  key: "browser",  importPath: "../cleaners/browser.js" },
   { name: "Docker",   key: "docker",   importPath: "../cleaners/docker.js" },
   { name: "Xcode",    key: "xcode",    importPath: "../cleaners/xcode.js" },
-<<<<<<< HEAD
   { name: "Keychain", key: "keychain", importPath: "../cleaners/keychain.js" },
   { name: "Privacy",  key: "privacy",  importPath: "../cleaners/privacy.js" },
+<<<<<<< HEAD
   { name: "iOS Backups", key: "mobile", importPath: "../cleaners/mobile.js" },
   { name: "Maintain", key: "maintain", importPath: "../cleaners/maintain.js" },
   { name: "Large Files", key: "largefiles", importPath: "../cleaners/largefiles.js" },
@@ -38,6 +38,7 @@ const modules: ModuleDef[] = [
   { name: "Privacy",    key: "privacy",    importPath: "../cleaners/privacy.js" },
   { name: "Duplicates", key: "duplicates", importPath: "../cleaners/duplicates.js" },
 >>>>>>> origin/feat/duplicate-finder
+  { name: "Mail",     key: "mail",     importPath: "../cleaners/mail.js" },
 ];
 
 export function getModuleList(): ModuleDef[] {
