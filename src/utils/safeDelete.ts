@@ -33,26 +33,37 @@ function normalizeMacOSPath(p: string): string {
 }
 
 export function isSafeToDelete(targetPath: string, allowedBase: string): boolean {
+  // Normalize the raw path first (before resolving symlinks)
+  const normalizedTarget = normalizeMacOSPath(targetPath);
+
+  // Allow known macOS system paths regardless of symlink resolution
+  const knownSafePrefixes = ["/private/tmp", "/private/var/log", "/private/var/folders"];
+  const isKnownSafe = knownSafePrefixes.some(
+    (prefix) => normalizedTarget === prefix || normalizedTarget.startsWith(prefix + path.sep)
+  );
+
   try {
     // Resolve symlinks to their real paths
     const resolvedTarget = normalizeMacOSPath(fs.realpathSync(targetPath));
     const resolvedBase = normalizeMacOSPath(fs.realpathSync(allowedBase));
 
-    // Ensure the resolved path is strictly within the allowed base,
-    // OR is one of the known macOS system temp/log paths (always safe to clean)
+    // Ensure the resolved path is strictly within the allowed base
     const isInBase = resolvedTarget === resolvedBase ||
       resolvedTarget.startsWith(resolvedBase + path.sep);
 
     if (isInBase) return true;
 
-    // Allow known macOS system paths that are valid targets regardless of allowedBase
-    const knownSafePrefixes = ["/private/tmp", "/private/var/log", "/private/var/folders"];
+    // Check resolved path against known safe prefixes
     return knownSafePrefixes.some(
       (prefix) => resolvedTarget === prefix || resolvedTarget.startsWith(prefix + path.sep)
     );
   } catch {
-    // If realpathSync fails (path doesn't exist, permission denied),
-    // the path cannot be safely validated — reject it.
+    // If realpathSync fails (permission denied, path gone), fall back to the
+    // raw-path check. Paths under known system directories are safe even if
+    // we can't resolve symlinks — the OS owns these directories.
+    if (isKnownSafe) return true;
+
+    // For non-system paths, we can't validate — reject.
     return false;
   }
 }

@@ -77,4 +77,14 @@ describe("system cleaner", () => {
     // In non-verbose mode, no warning lines should be printed
     expect(warns.length).toBe(0);
   }, 30000);
+
+  it("does not report symlink escape for permission-denied /tmp paths", async () => {
+    const result = await clean({ dryRun: false, json: true, verbose: false, noSudo: true } as any);
+
+    // No error should mention "symlink escape" for /private/tmp paths
+    const falseSymlinkErrors = result.errors.filter(
+      (e) => e.includes("symlink escape") && (e.includes("/private/tmp") || e.includes("/tmp"))
+    );
+    expect(falseSymlinkErrors).toEqual([]);
+  }, 30000);
 });
