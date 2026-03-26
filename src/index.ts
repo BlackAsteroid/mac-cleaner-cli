@@ -289,6 +289,18 @@ program
     await runUpgrade(opts);
   });
 
+// ─── disk-usage ─────────────────────────────────────────────────────────────
+
+program
+  .command("disk-usage")
+  .description("Show visual breakdown of disk usage by directory (Space Lens)")
+  .argument("[path]", "Directory to scan (default: home directory)")
+  .option("--json", "Output results as JSON", false)
+  .action(async (pathArg: string | undefined, opts: { json: boolean }) => {
+    const { runDiskUsage } = await import("./commands/diskusage.js");
+    await runDiskUsage({ json: opts.json, path: pathArg });
+  });
+
 // ─── TUI mode ──────────────────────────────────────────────────────────────
 
 program
