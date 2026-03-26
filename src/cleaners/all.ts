@@ -39,17 +39,11 @@ export async function clean(options: CleanOptions): Promise<CleanResult> {
   const allErrors: string[] = [];
 
   for (const { label, cleaner } of modules) {
-    if (!options.json) {
-      process.stdout.write(chalk.gray(`  Running ${label} cleaner...`));
-    }
     const result = await cleaner.clean(subOptions);
     results.push({ name: label, result });
     totalFreed += result.freed;
     allPaths.push(...result.paths);
     allErrors.push(...result.errors);
-    if (!options.json) {
-      process.stdout.write(chalk.green(" ✔\n"));
-    }
   }
 
   // #26: JSON per-module breakdown

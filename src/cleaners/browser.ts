@@ -102,7 +102,12 @@ export async function clean(options: CleanOptions): Promise<CleanResult> {
         verboseLine(browser, p, size, false);
       }
     } catch (err) {
-      errors.push(`Failed to remove ${p}: ${(err as Error).message}`);
+      const msg = (err as Error).message;
+      if (msg.includes("EPERM") || msg.includes("EACCES")) {
+        errors.push(`Skipped (protected by macOS): ${p}`);
+      } else {
+        errors.push(`Failed to remove ${p}: ${msg}`);
+      }
     }
   }
 
