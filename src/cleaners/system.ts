@@ -56,6 +56,14 @@ const FDA_REQUIRED_PATTERNS = [
   "com.apple.Messages",
   "CloudDocuments",
   "com.apple.iCloud",
+  // Paths that macOS TCC blocks even with sudo
+  "com.apple.ap.adprivacyd",
+  "com.apple.homed",
+  "CloudKit",
+  "com.apple.iCloudHelper",
+  "com.apple.HomeKit",
+  "FamilyCircle",
+  "com.apple.security.KCDatabase",
 ];
 
 function requiresFullDiskAccess(targetPath: string): boolean {
@@ -92,6 +100,8 @@ function removePathSafe(targetPath: string, errors: string[], allowedBase: strin
         `Skipped (Full Disk Access required): ${targetPath}\n` +
         `  → Enable in: System Settings → Privacy & Security → Full Disk Access → add Terminal`
       );
+    } else if (isPermError) {
+      errors.push(`Skipped (elevated permissions required): ${targetPath}`);
     } else {
       errors.push(`Failed to remove ${targetPath}: ${msg}`);
     }
@@ -251,7 +261,7 @@ export async function clean(options: CleanOptions): Promise<CleanResult> {
 
   // #25: Warn when paths were skipped due to permissions (not in json mode, not in sudo mode)
   const noSudoMode = options.noSudo || options.yes || !process.stdin.isTTY;
-  if (permissionSkipped > 0 && !options.json && noSudoMode) {
+  if (permissionSkipped > 0 && !options.json && noSudoMode && options.verbose) {
     console.warn(chalk.yellow(`  ⚠ ${permissionSkipped} path(s) skipped — require elevated permissions. Run without --no-sudo to attempt cleanup.`));
   }
 
@@ -271,7 +281,7 @@ export async function clean(options: CleanOptions): Promise<CleanResult> {
     renderSummaryTable(rows);
   }
 
-  if (errors.length > 0 && !options.json) {
+  if (errors.length > 0 && !options.json && options.verbose) {
     for (const e of errors) {
       console.warn(chalk.yellow(`  ⚠ ${e}`));
     }

@@ -60,4 +60,43 @@ describe("system cleaner", () => {
     const result = await clean({ dryRun: true, json: true });
     expect(result.ok).toBe(true);
   });
+
+  it("non-verbose mode suppresses error warnings from stdout", async () => {
+    const warns: string[] = [];
+    const origWarn = console.warn;
+    console.warn = (...args: any[]) => warns.push(args.join(" "));
+
+    try {
+      // dryRun: false so the cleaner actually attempts deletions (some will fail with
+      // permission errors, populating the errors array and exercising the output gate)
+      await clean({ dryRun: false, json: false, verbose: false, noSudo: true, _suppressTable: true } as any);
+    } finally {
+      console.warn = origWarn;
+    }
+
+    // In non-verbose mode, no warning lines should be printed
+    expect(warns.length).toBe(0);
+  }, 30000);
+
+  it("does not report symlink escape for permission-denied /tmp paths", async () => {
+    const result = await clean({ dryRun: false, json: true, verbose: false, noSudo: true } as any);
+
+    // No error should mention "symlink escape" for /private/tmp paths
+    const falseSymlinkErrors = result.errors.filter(
+      (e) => e.includes("symlink escape") && (e.includes("/private/tmp") || e.includes("/tmp"))
+    );
+    expect(falseSymlinkErrors).toEqual([]);
+  }, 30000);
+
+  it("TCC-protected paths are classified as FDA, not attempted via sudo", async () => {
+    const result = await clean({ dryRun: true, json: true });
+
+    // None of these TCC-protected paths should appear in errors with "sudo rm failed"
+    const sudoErrors = result.errors.filter((e) => e.includes("sudo rm failed"));
+    for (const e of sudoErrors) {
+      expect(e).not.toContain("CloudKit");
+      expect(e).not.toContain("FamilyCircle");
+      expect(e).not.toContain("HomeKit");
+    }
+  });
 });
