@@ -13,6 +13,7 @@ import * as mobile from "./mobile.js";
 import * as startup from "./startup.js";
 import * as cloud from "./cloud.js";
 import * as mail from "./mail.js";
+import * as apps from "./apps.js";
 
 interface ModuleResult {
   name: string;
@@ -39,6 +40,7 @@ export async function clean(options: CleanOptions): Promise<CleanResult> {
     { label: "startup",  cleaner: startup as unknown as typeof system },
     { label: "cloud",    cleaner: cloud },
     { label: "mail",     cleaner: mail },
+    { label: "apps",     cleaner: apps },
   ];
 
   const results: ModuleResult[] = [];

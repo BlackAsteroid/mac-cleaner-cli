@@ -39,6 +39,7 @@ const modules: ModuleDef[] = [
   { name: "Duplicates", key: "duplicates", importPath: "../cleaners/duplicates.js" },
 >>>>>>> origin/feat/duplicate-finder
   { name: "Mail",     key: "mail",     importPath: "../cleaners/mail.js" },
+  { name: "Apps",     key: "apps",     importPath: "../cleaners/apps.js" },
 ];
 
 export function getModuleList(): ModuleDef[] {
