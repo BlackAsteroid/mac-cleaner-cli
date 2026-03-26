@@ -50,8 +50,8 @@ export function renderSummaryTable(rows: SummaryRow[], dryRun = false): void {
 
     console.log(
       row.module.padEnd(COL_MODULE) +
-      pathsStr.padStart(COL_PATHS) +
-      freedStr.padStart(COL_FREED) +
+      ansiPadStart(pathsStr, COL_PATHS) +
+      ansiPadStart(freedStr, COL_FREED) +
       statusStr(statusIcon, COL_STATUS)
     );
   }
@@ -62,7 +62,7 @@ export function renderSummaryTable(rows: SummaryRow[], dryRun = false): void {
     console.log(
       chalk.bold("Total".padEnd(COL_MODULE)) +
       chalk.bold(String(totalPaths).padStart(COL_PATHS)) +
-      chalk.bold(totalFreedStr.padStart(COL_FREED)) +
+      chalk.bold(ansiPadStart(totalFreedStr, COL_FREED)) +
       " ".padStart(COL_STATUS)
     );
   }
@@ -75,11 +75,15 @@ export function renderSummaryTable(rows: SummaryRow[], dryRun = false): void {
   console.log();
 }
 
-function statusStr(icon: string, width: number): string {
-  // chalk adds invisible ANSI chars — pad the visible content only
-  const visible = icon.replace(/\x1b\[[0-9;]*m/g, "");
+/** Pad a string that may contain ANSI escape codes to a given visible width (right-aligned). */
+function ansiPadStart(str: string, width: number): string {
+  const visible = str.replace(/\x1b\[[0-9;]*m/g, "");
   const padding = Math.max(0, width - visible.length);
-  return " ".repeat(padding) + icon;
+  return " ".repeat(padding) + str;
+}
+
+function statusStr(icon: string, width: number): string {
+  return ansiPadStart(icon, width);
 }
 
 /**

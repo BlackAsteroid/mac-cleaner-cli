@@ -117,7 +117,9 @@ export async function clean(options: CleanOptions): Promise<CleanResult> {
     if (options.verbose && !options.json) {
       console.log(chalk.gray(`    [privacy] cleared com.apple.finder RecentFolders`));
     }
-  } else if (finderResult.stderr && !finderResult.stderr.includes("does not exist")) {
+  } else if (finderResult.stderr &&
+             !finderResult.stderr.includes("does not exist") &&
+             !finderResult.stderr.includes("not found")) {
     errors.push(`defaults delete com.apple.finder RecentFolders: ${finderResult.stderr.trim()}`);
   }
 
