@@ -146,6 +146,19 @@ addCleanOptions(
   process.exit(result.ok ? 0 : 1);
 });
 
+// clean duplicates
+addCleanOptions(
+  cleanCmd
+    .command("duplicates")
+    .description("Find and remove duplicate files in ~/Downloads, ~/Documents, ~/Desktop")
+    .option("--min-size <size>", "Minimum file size to consider (e.g. 1M, 500K)", "1M")
+).action(async (opts: { dryRun: boolean; json: boolean; verbose: boolean; noSudo: boolean; yes: boolean; minSize: string }) => {
+  const { clean } = await import("./cleaners/duplicates.js");
+  const result = await clean(opts as any);
+  outputResult(result, opts.json);
+  process.exit(result.ok ? 0 : 1);
+});
+
 // clean all
 addCleanOptions(
   cleanCmd
@@ -246,6 +259,18 @@ addCleanOptions(
 ).action(async (opts: { dryRun: boolean; json: boolean; verbose: boolean; noSudo: boolean; yes: boolean; secureDelete: boolean }) => {
   const { clean } = await import("./cleaners/privacy.js");
   const result = await clean(opts as CleanOptions);
+  outputResult(result, opts.json);
+  process.exit(result.ok ? 0 : 1);
+});
+
+addCleanOptions(
+  program
+    .command("duplicates")
+    .description("Find and remove duplicate files")
+    .option("--min-size <size>", "Minimum file size to consider (e.g. 1M, 500K)", "1M")
+).action(async (opts: { dryRun: boolean; json: boolean; verbose: boolean; noSudo: boolean; yes: boolean; minSize: string }) => {
+  const { clean } = await import("./cleaners/duplicates.js");
+  const result = await clean(opts as any);
   outputResult(result, opts.json);
   process.exit(result.ok ? 0 : 1);
 });

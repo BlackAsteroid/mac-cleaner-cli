@@ -22,8 +22,9 @@ const modules: ModuleDef[] = [
   { name: "Browser",  key: "browser",  importPath: "../cleaners/browser.js" },
   { name: "Docker",   key: "docker",   importPath: "../cleaners/docker.js" },
   { name: "Xcode",    key: "xcode",    importPath: "../cleaners/xcode.js" },
-  { name: "Keychain", key: "keychain", importPath: "../cleaners/keychain.js" },
-  { name: "Privacy",  key: "privacy",  importPath: "../cleaners/privacy.js" },
+  { name: "Keychain",   key: "keychain",   importPath: "../cleaners/keychain.js" },
+  { name: "Privacy",    key: "privacy",    importPath: "../cleaners/privacy.js" },
+  { name: "Duplicates", key: "duplicates", importPath: "../cleaners/duplicates.js" },
 ];
 
 export function getModuleList(): ModuleDef[] {
