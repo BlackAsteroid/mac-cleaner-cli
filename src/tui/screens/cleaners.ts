@@ -6,12 +6,21 @@ import { runClean, getModuleList } from "../scan.js";
 import { createLoadingOverlay } from "../widgets/loading.js";
 import type { TuiContext } from "../index.js";
 
+const GROUP_LABELS: Record<string, string> = {
+  cleanup: "Cleanup",
+  protection: "Protection",
+  speed: "Speed",
+  applications: "Applications",
+  files: "Files",
+};
+
 interface CleanerItem {
   key: string;
   name: string;
   size: number;
   detail: string;
   checked: boolean;
+  group: string;
 }
 
 export function createCleanersScreen(ctx: TuiContext): () => void {
@@ -27,10 +36,13 @@ export function createCleanersScreen(ctx: TuiContext): () => void {
       size: scan?.freed ?? 0,
       detail: `${scan?.paths.length ?? 0} paths`,
       checked: false,
+      group: mod.group,
     };
   });
 
   let selectedIdx = 0;
+  // Maps list row index -> items index (-1 for group headers)
+  let itemIndices: number[] = [];
 
   const list = blessed.list({
     parent: mainBox,
@@ -60,14 +72,36 @@ export function createCleanersScreen(ctx: TuiContext): () => void {
   });
 
   function renderList(): void {
-    const lines = items.map((item) => {
+    const lines: string[] = [];
+    itemIndices = [];
+    let lastGroup = "";
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.group !== lastGroup) {
+        const label = GROUP_LABELS[item.group] ?? item.group;
+        lines.push(`  {bold}{white-fg}-- ${label.toUpperCase()} --{/white-fg}{/bold}`);
+        itemIndices.push(-1);
+        lastGroup = item.group;
+      }
       const icon = item.checked ? getIcon("checkbox_on") : getIcon("checkbox_off");
       const sizeStr = item.size > 0 ? formatBytes(item.size) : "0 B";
-      return ` ${icon} ${item.name.padEnd(16)} ${sizeStr.padStart(10)}    ${item.detail}`;
-    });
+      lines.push(` ${icon} ${item.name.padEnd(16)} ${sizeStr.padStart(10)}    ${item.detail}`);
+      itemIndices.push(i);
+    }
+
     list.setItems(lines);
-    list.select(selectedIdx);
+    // Find the list row that corresponds to selectedIdx, skipping headers
+    let listIdx = itemIndices.indexOf(selectedIdx);
+    if (listIdx < 0) listIdx = itemIndices.findIndex((i) => i >= 0);
+    list.select(listIdx);
     updateSummary();
+  }
+
+  /** Map the blessed list's selected row back to an items index. Returns -1 for headers. */
+  function getItemIdx(): number {
+    const listSel = (list as any).selected ?? 0;
+    return itemIndices[listSel] ?? -1;
   }
 
   function updateSummary(): void {
@@ -94,9 +128,10 @@ export function createCleanersScreen(ctx: TuiContext): () => void {
   }
 
   bindKey(["space"], () => {
-    selectedIdx = (list as any).selected ?? 0;
-    if (selectedIdx >= 0 && selectedIdx < items.length) {
-      items[selectedIdx].checked = !items[selectedIdx].checked;
+    const idx = getItemIdx();
+    if (idx >= 0 && idx < items.length) {
+      selectedIdx = idx;
+      items[idx].checked = !items[idx].checked;
       renderList();
     }
     screen.render();
