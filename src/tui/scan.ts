@@ -106,25 +106,31 @@ interface ModuleDef {
   name: string;
   key: string;
   importPath: string;
+  group: string;
 }
 
 const modules: ModuleDef[] = [
-  { name: "System",   key: "system",   importPath: "../cleaners/system.js" },
-  { name: "Brew",     key: "brew",     importPath: "../cleaners/brew.js" },
-  { name: "Node",     key: "node",     importPath: "../cleaners/node.js" },
-  { name: "Browser",  key: "browser",  importPath: "../cleaners/browser.js" },
-  { name: "Docker",   key: "docker",   importPath: "../cleaners/docker.js" },
-  { name: "Xcode",    key: "xcode",    importPath: "../cleaners/xcode.js" },
-  { name: "Keychain", key: "keychain", importPath: "../cleaners/keychain.js" },
-  { name: "Privacy",    key: "privacy",    importPath: "../cleaners/privacy.js" },
-  { name: "iOS Backups", key: "mobile",  importPath: "../cleaners/mobile.js" },
-  { name: "Maintain",  key: "maintain",  importPath: "../cleaners/maintain.js" },
-  { name: "Large Files", key: "largefiles", importPath: "../cleaners/largefiles.js" },
-  { name: "Startup",   key: "startup",   importPath: "../cleaners/startup.js" },
-  { name: "Cloud",     key: "cloud",     importPath: "../cleaners/cloud.js" },
-  { name: "Duplicates", key: "duplicates", importPath: "../cleaners/duplicates.js" },
-  { name: "Mail",      key: "mail",      importPath: "../cleaners/mail.js" },
-  { name: "Apps",      key: "apps",      importPath: "../cleaners/apps.js" },
+  // Cleanup
+  { name: "System",      key: "system",     importPath: "../cleaners/system.js",     group: "cleanup" },
+  { name: "Brew",        key: "brew",       importPath: "../cleaners/brew.js",       group: "cleanup" },
+  { name: "Node",        key: "node",       importPath: "../cleaners/node.js",       group: "cleanup" },
+  { name: "Browser",     key: "browser",    importPath: "../cleaners/browser.js",    group: "cleanup" },
+  { name: "Docker",      key: "docker",     importPath: "../cleaners/docker.js",     group: "cleanup" },
+  { name: "Xcode",       key: "xcode",      importPath: "../cleaners/xcode.js",      group: "cleanup" },
+  { name: "Cloud",       key: "cloud",      importPath: "../cleaners/cloud.js",      group: "cleanup" },
+  { name: "Mail",        key: "mail",       importPath: "../cleaners/mail.js",       group: "cleanup" },
+  { name: "iOS Backups", key: "mobile",     importPath: "../cleaners/mobile.js",     group: "cleanup" },
+  // Protection
+  { name: "Privacy",     key: "privacy",    importPath: "../cleaners/privacy.js",    group: "protection" },
+  { name: "Keychain",    key: "keychain",   importPath: "../cleaners/keychain.js",   group: "protection" },
+  // Speed
+  { name: "Maintain",    key: "maintain",   importPath: "../cleaners/maintain.js",   group: "speed" },
+  { name: "Startup",     key: "startup",    importPath: "../cleaners/startup.js",    group: "speed" },
+  // Applications
+  { name: "Apps",        key: "apps",       importPath: "../cleaners/apps.js",       group: "applications" },
+  // Files
+  { name: "Large Files", key: "largefiles", importPath: "../cleaners/largefiles.js", group: "files" },
+  { name: "Duplicates",  key: "duplicates", importPath: "../cleaners/duplicates.js", group: "files" },
 ];
 
 export function getModuleList(): ModuleDef[] {
