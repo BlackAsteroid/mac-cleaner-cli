@@ -4,6 +4,8 @@
 
 **Goal:** Reorganize flat CLI commands into 5 utility groups (cleanup, protection, speed, applications, files) with deprecated aliases for backwards compatibility.
 
+**Tracking:** https://github.com/BlackAsteroid/mac-cleaner-cli/issues/116
+
 **Architecture:** Replace the single `clean` parent command in Commander with 5 group-level subcommands. Old flat commands and `clean <cmd>` remain as deprecated wrappers. TUI cleaners screen gets group headers. Help formatter reflects new categories.
 
 **Tech Stack:** Commander.js, chalk, neo-blessed (TUI), vitest
